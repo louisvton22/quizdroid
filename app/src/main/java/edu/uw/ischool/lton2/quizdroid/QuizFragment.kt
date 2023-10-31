@@ -63,6 +63,7 @@ class QuizFragment : Fragment(R.layout.fragment_quiz) {
             //handle if we're ready to finish
 
             if (isAnswer) {
+                next.text = "Next"
                 if (questionNumber == data?.getInt("numQuestions")) {
                     Log.i("Quiz Fragment", "Returning to main screen")
                     next.text = "Finish"
@@ -71,8 +72,8 @@ class QuizFragment : Fragment(R.layout.fragment_quiz) {
                 if (radioGroup.indexOfChild(view.findViewById<RadioButton>(answerId)) == questions[questionNumber]?.last()?.toInt()!! - 1) {
                     correct += 1
                     Log.i("Quiz Fragment", "correct")
-                    updateView(view)
                 }
+                updateView(view)
             } else  {
                 //check if they answered the question correctly
                 view.findViewById<RadioButton>(answerId).isChecked = false
@@ -99,6 +100,8 @@ class QuizFragment : Fragment(R.layout.fragment_quiz) {
             }
             if (questionNumber == data?.getInt("numQuestions")!!) {
                 view.findViewById<Button>(R.id.next).text = "Finish"
+            } else {
+                view.findViewById<Button>(R.id.next).text = "Next"
             }
         } else {
             view.findViewById<TextView>(R.id.questionNumber).setText("Question $questionNumber")
@@ -113,6 +116,7 @@ class QuizFragment : Fragment(R.layout.fragment_quiz) {
                 radio?.setTextColor(Color.BLACK)
                 radio?.isEnabled = true
             }
+            view.findViewById<Button>(R.id.next).text = "Submit"
         }
         if (questionNumber >= 1) {
             view.findViewById<TextView>(R.id.correct).text =
