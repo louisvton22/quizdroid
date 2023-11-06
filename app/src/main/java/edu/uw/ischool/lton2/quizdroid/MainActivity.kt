@@ -1,5 +1,7 @@
 package edu.uw.ischool.lton2.quizdroid
 
+import android.app.Application
+import android.content.Context
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -9,21 +11,151 @@ import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.ListView
 
+interface ITopicRepository {
+    fun insert(topic: Topic)
+
+    fun getAll():List<Topic>
+
+    fun getTopic(topic:Topic):Topic?
+    fun delete(topic: Topic)
+
+}
+
+class TopicRepository(val context: Context): ITopicRepository {
+    val TAG = "TopicRepository"
+    var topics: MutableList<Topic>
+    init {
+        // Creating Math topic object
+        topics = mutableListOf()
+        addTopics()
+        // Superheroes topic object
+
+        // Physics topic object
+    }
+
+    override fun insert(topic: Topic) {
+        topics.add(topic)
+    }
+
+    override fun getAll(): List<Topic> {
+
+        return topics
+    }
+
+    override fun getTopic(topic:Topic): Topic? {
+        for (t in topics) {
+            if (t == topic) {
+                return t
+            }
+        }
+        return null
+    }
+
+    override fun delete(topic: Topic) {
+        topics.remove(topic)
+    }
+
+    fun addTopics() {
+        var questionsList:MutableList<Quiz> = mutableListOf()
+        var topic: Topic
+
+
+        //Math
+        questionsList = mutableListOf()
+        for (question in arrayOf(
+            arrayOf("What's 2+2", "4", "1", "3", "2", "1"),
+            arrayOf("what is the area under a function called", "derivative", "integral", "area", "perimeter", "2"),
+            arrayOf("What is the type of equilibrium that moves", "static", "moving", "dynamic", "chaotic", "3"),
+            arrayOf("Who created calculus", "Euler", "Bernoulli", "Pythagorous", "Newton", "4"),
+            arrayOf("What property describes x(y + z) = xy + xz", "Commutative", "Associative", "Transitive", "Distributive", "4"))) {
+            val newQuestion = Quiz(question[0], question.slice(1 until question.size - 1).toList() as MutableList , question.last().toInt())
+            questionsList.add(newQuestion)
+        }
+
+        topic = Topic("Math", "Test your skills across various math concepts", "This math quiz contains mathematic" +
+                "concepts up to a college-level including some historical facts behind famous mathematicians.", questionsList)
+        topics.add(topic)
+
+        // Physics
+
+        questionsList = mutableListOf()
+        for (question in arrayOf(
+            arrayOf("What's the difference between speed and velocity?", "they mean the same thing", "speed's a vector and velocity's a scalar", "speed's a scalar and velocity's a vector", "velocity can only be positive", "3"),
+            arrayOf("Which of the following is NOT one of Newton's law of motion?", "moving equates to doing work", "force is equal to mass times acceleration", "an object in motion stays in motion", "every action has an opposite or equal reaction", "1"),
+            arrayOf("What phenomenon describes how screwdrivers are better than hand screwing", "angular momentum", "leverage", "grip", "chaotic", "2"),
+            arrayOf("What is a tool that refracts light into visible wavelengths", "square", "lens", "light splitter", "prism", "4"),
+            arrayOf("Which of the following describes work", "Thinking about your homework","Isometric exercises","Standing in place with a box","Carrying a box across the street", "4"),
+            arrayOf("What phenomenon prevents everything from sliding all around the place", "Gravity", "Friction", "Glue", "Weight", "2"))) {
+            val newQuestion = Quiz(question[0], question.slice(1 until question.size - 1).toList() as MutableList , question.last().toInt())
+            questionsList.add(newQuestion)
+        }
+
+        topic = Topic("Physics", "Learn more about real-life phenomenon", "This math quiz contains physics concepts related to motion," +
+                " kinematics, magnetism, and gas laws.", questionsList)
+        topics.add(topic)
+
+        // Superheroes
+        for (question in arrayOf(
+            arrayOf("How did spider-man get his powers?", "He was born with them", "He drank a spider-mutant potion", "radioactive spider bite","exposed to gamma radiation", "3"),
+            arrayOf("Which actor plays Thor in all Marvel Studio Movies?", "Chris Hemsworth", "Luke Hemsworth", "Chris Evans", "Robert Downy Jr.", "1"),
+            arrayOf("What is Iron Man's AI system called?", "Karen", "Jarvis", "Vision", "Candace", "2"),
+            arrayOf("Which team was the Black Panther a part of in Civil War?", "Team Captain America", "Team Hulk", "Independent", "Team Iron-Man", "4"),
+            arrayOf("Who held the time stone for most of the MCU movies?", "Thanos","Dr. Strange","Gamora","Vision", "2"),
+            arrayOf("What is Wolverine's real name?", "Thomas", "Xavier", "Logan", "Hank", "3"),
+            arrayOf("What is Daredevil's occupation aside from crime fighting?", "Lawyer", "Doctor", "Policeman", "Corporate CEO", "1"))) {
+            val newQuestion = Quiz(question[0], question.slice(1 until question.size - 1).toList() as MutableList , question.last().toInt())
+            questionsList.add(newQuestion)
+        }
+        topic = Topic("Superheroes", "How big of a marvel fan are you?", "This superheroes quiz is about all the Marvel Superhero" +
+                " comic books,and movies that are and not produced by Marvel Studios", questionsList)
+        topics.add(topic)
+    }
+
+
+}
+data class Quiz(val text: String, val answers: MutableList<String>, val correctAnswer: Int)
+
+data class Topic(val title: String, val shortDesc: String, val longDesc: String, val questions: List<Quiz>) {
+    fun getNumQuestions():Int {
+        return questions.size
+    }
+}
+
+class QuizApp: Application() {
+    lateinit var quizRepository : ITopicRepository
+    val TAG = "QuizApp"
+    lateinit var selectedTopic: Topic
+    override fun onCreate() {
+        super.onCreate()
+        Log.i(TAG, "Quiz App Created")
+        quizRepository = TopicRepository(this)
+    }
+
+    fun getRepo():TopicRepository {
+        return quizRepository as TopicRepository
+    }
+}
 class MainActivity : AppCompatActivity() {
 
-    val quizCategories = arrayOf("Math", "Physics", "Marvel Superheroes")
 
+    var topics: List<Topic> = mutableListOf()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        val quizApp = (application as QuizApp)
+        val repo = quizApp.getRepo()
+        topics = repo.getAll()
+        val quizCategories: (List<Topic>) -> List<String> = {topics -> topics.map {"$it.title = "}}
+
         val listView = findViewById<ListView>(R.id.quizList)
-        val arrayAdapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, quizCategories)
+        val arrayAdapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, quizCategories(topics))
         listView.adapter = arrayAdapter
 
         listView.setOnItemClickListener { parent, view, position, id->
             val clicked = parent.getItemAtPosition(position)
             Log.i("QuizDroid", "clicked item ${clicked as String}")
+            (application as QuizApp).selectedTopic = topics[position]
             var intent = Intent()
             when (clicked) {
                 "Math" -> intent = Intent(this, MathActivity::class.java)

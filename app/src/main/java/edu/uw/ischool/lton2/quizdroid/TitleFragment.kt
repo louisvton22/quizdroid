@@ -17,22 +17,23 @@ import org.w3c.dom.Text
  */
 class TitleFragment : Fragment(R.layout.fragment_title) {
 
-    private var data: Bundle? = null
+
+    lateinit var quizApp: QuizApp
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
         // Inflate the layout for this fragment
-        data = arguments
+        quizApp = (activity?.application as QuizApp)
         return inflater.inflate(R.layout.fragment_title, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        view.findViewById<TextView>(R.id.txtDescription).setText(data?.getString("description"))
-        view.findViewById<TextView>(R.id.txtNumQuestions).setText("Number of questions: ${data?.getInt("numQuestions")}")
+        val topic: Topic? = quizApp.getRepo().getTopic(quizApp.selectedTopic)
+        view.findViewById<TextView>(R.id.txtDescription).setText(topic?.longDesc)
+        view.findViewById<TextView>(R.id.txtNumQuestions).setText("Number of questions: ${topic?.getNumQuestions()}")
         var quizFragment = QuizFragment()
-        quizFragment.arguments = data
         view.findViewById<Button>(R.id.btnBegin).setOnClickListener {
             Log.i("Title Fragment", "begin button pressed")
             activity?.supportFragmentManager?.beginTransaction()?.apply {

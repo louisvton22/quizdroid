@@ -27,7 +27,7 @@ class MathActivity : AppCompatActivity() {
         bundle.putInt("numQuestions", nq)
         bundle.putSerializable("questions", HashMap<Int, Array<String>>(questions))
 
-        titleFragment.arguments = bundle
+//        titleFragment.arguments = bundle
         supportFragmentManager.beginTransaction().apply {
             replace(R.id.flFragment, titleFragment)
             commit()
