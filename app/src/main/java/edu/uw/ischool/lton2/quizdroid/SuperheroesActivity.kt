@@ -20,14 +20,14 @@ class SuperheroesActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_math)
+        setContentView(R.layout.activity_superheroes)
 
         val titleFragment = TitleFragment()
-        bundle.putString("description", desc)
-        bundle.putInt("numQuestions", nq)
-        bundle.putSerializable("questions", HashMap<Int, Array<String>>(questions))
-
-        titleFragment.arguments = bundle
+//        bundle.putString("description", desc)
+//        bundle.putInt("numQuestions", nq)
+//        bundle.putSerializable("questions", HashMap<Int, Array<String>>(questions))
+//
+//        titleFragment.arguments = bundle
         supportFragmentManager.beginTransaction().apply {
             replace(R.id.flFragment, titleFragment)
             commit()

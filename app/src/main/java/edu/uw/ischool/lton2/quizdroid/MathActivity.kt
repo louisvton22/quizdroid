@@ -23,9 +23,9 @@ class MathActivity : AppCompatActivity() {
         setContentView(R.layout.activity_math)
 
         val titleFragment = TitleFragment()
-        bundle.putString("description", desc)
-        bundle.putInt("numQuestions", nq)
-        bundle.putSerializable("questions", HashMap<Int, Array<String>>(questions))
+//        bundle.putString("description", desc)
+//        bundle.putInt("numQuestions", nq)
+//        bundle.putSerializable("questions", HashMap<Int, Array<String>>(questions))
 
 //        titleFragment.arguments = bundle
         supportFragmentManager.beginTransaction().apply {

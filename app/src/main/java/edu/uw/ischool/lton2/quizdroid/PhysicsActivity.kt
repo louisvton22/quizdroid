@@ -19,14 +19,14 @@ class PhysicsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_math)
+        setContentView(R.layout.activity_physics)
 
         val titleFragment = TitleFragment()
-        bundle.putString("description", desc)
-        bundle.putInt("numQuestions", nq)
-        bundle.putSerializable("questions", HashMap<Int, Array<String>>(questions))
+//        bundle.putString("description", desc)
+//        bundle.putInt("numQuestions", nq)
+//        bundle.putSerializable("questions", HashMap<Int, Array<String>>(questions))
 
-        titleFragment.arguments = bundle
+    //    titleFragment.arguments = bundle
         supportFragmentManager.beginTransaction().apply {
             replace(R.id.flFragment, titleFragment)
             commit()

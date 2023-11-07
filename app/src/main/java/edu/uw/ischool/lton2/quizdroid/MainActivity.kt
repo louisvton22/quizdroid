@@ -6,10 +6,13 @@ import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.ListView
+import android.widget.TextView
 
 interface ITopicRepository {
     fun insert(topic: Topic)
@@ -74,6 +77,7 @@ class TopicRepository(val context: Context): ITopicRepository {
 
         topic = Topic("Math", "Test your skills across various math concepts", "This math quiz contains mathematic" +
                 "concepts up to a college-level including some historical facts behind famous mathematicians.", questionsList)
+        Log.i(TAG, "${topic.getNumQuestions()}")
         topics.add(topic)
 
         // Physics
@@ -86,15 +90,20 @@ class TopicRepository(val context: Context): ITopicRepository {
             arrayOf("What is a tool that refracts light into visible wavelengths", "square", "lens", "light splitter", "prism", "4"),
             arrayOf("Which of the following describes work", "Thinking about your homework","Isometric exercises","Standing in place with a box","Carrying a box across the street", "4"),
             arrayOf("What phenomenon prevents everything from sliding all around the place", "Gravity", "Friction", "Glue", "Weight", "2"))) {
-            val newQuestion = Quiz(question[0], question.slice(1 until question.size - 1).toList() as MutableList , question.last().toInt())
+            val newQuestion = Quiz(
+                question[0],
+                question.slice(1 until question.size - 1).toList() as MutableList,
+                question.last().toInt()
+            )
             questionsList.add(newQuestion)
         }
-
         topic = Topic("Physics", "Learn more about real-life phenomenon", "This math quiz contains physics concepts related to motion," +
                 " kinematics, magnetism, and gas laws.", questionsList)
+        Log.i(TAG, "${topic.getNumQuestions()}")
         topics.add(topic)
 
         // Superheroes
+        questionsList = mutableListOf()
         for (question in arrayOf(
             arrayOf("How did spider-man get his powers?", "He was born with them", "He drank a spider-mutant potion", "radioactive spider bite","exposed to gamma radiation", "3"),
             arrayOf("Which actor plays Thor in all Marvel Studio Movies?", "Chris Hemsworth", "Luke Hemsworth", "Chris Evans", "Robert Downy Jr.", "1"),
@@ -106,8 +115,9 @@ class TopicRepository(val context: Context): ITopicRepository {
             val newQuestion = Quiz(question[0], question.slice(1 until question.size - 1).toList() as MutableList , question.last().toInt())
             questionsList.add(newQuestion)
         }
-        topic = Topic("Superheroes", "How big of a marvel fan are you?", "This superheroes quiz is about all the Marvel Superhero" +
+        topic = Topic("Marvel Superheroes", "How big of a marvel fan are you?", "This superheroes quiz is about all the Marvel Superhero" +
                 " comic books,and movies that are and not produced by Marvel Studios", questionsList)
+        Log.i(TAG, "${topic.getNumQuestions()}")
         topics.add(topic)
     }
 
@@ -146,18 +156,18 @@ class MainActivity : AppCompatActivity() {
         val quizApp = (application as QuizApp)
         val repo = quizApp.getRepo()
         topics = repo.getAll()
-        val quizCategories: (List<Topic>) -> List<String> = {topics -> topics.map {"$it.title = "}}
+        val quizCategories: (List<Topic>) -> List<Pair<String,String>> = {topics -> topics.map {Pair(it.title, it.shortDesc)}}
 
         val listView = findViewById<ListView>(R.id.quizList)
-        val arrayAdapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, quizCategories(topics))
+        val arrayAdapter = TopicAdapter(this, quizCategories(topics))
         listView.adapter = arrayAdapter
 
         listView.setOnItemClickListener { parent, view, position, id->
-            val clicked = parent.getItemAtPosition(position)
-            Log.i("QuizDroid", "clicked item ${clicked as String}")
+            val clicked = parent.getItemAtPosition(position) as Pair<String,String>
+            Log.i("QuizDroid", "clicked item ${clicked}")
             (application as QuizApp).selectedTopic = topics[position]
             var intent = Intent()
-            when (clicked) {
+            when (clicked.first) {
                 "Math" -> intent = Intent(this, MathActivity::class.java)
                 "Physics" -> intent = Intent(this, PhysicsActivity::class.java)
                 "Marvel Superheroes" -> intent = Intent(this, SuperheroesActivity::class.java)
@@ -165,5 +175,22 @@ class MainActivity : AppCompatActivity() {
             startActivity(intent)
 
         }
+    }
+}
+
+class TopicAdapter(context: Context, data:List<Pair<String,String>>) : ArrayAdapter<Pair<String,String>>(context, R.layout.topic_list_item, data) {
+    private val inflater: LayoutInflater = LayoutInflater.from(context)
+
+    override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+        val view: View = convertView ?: inflater.inflate(R.layout.topic_list_item, parent, false)
+
+        val item = getItem(position) as Pair<String, String>
+        val textViewTitle = view.findViewById<TextView>(R.id.textViewTitle)
+        val textViewSubheading = view.findViewById<TextView>(R.id.textViewSubheading)
+
+        textViewTitle.text = item.first
+        textViewSubheading.text = item.second
+
+        return view
     }
 }

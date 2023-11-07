@@ -25,7 +25,7 @@ import java.io.Serializable
  */
 class QuizFragment : Fragment(R.layout.fragment_quiz) {
     var data: Bundle? = null
-    var questionNumber: Int = 1
+    var questionNumber: Int = 0
     var correct:Int = 0
     var answerId: Int = 0
     // toggle between displaying a question or answer
@@ -64,13 +64,14 @@ class QuizFragment : Fragment(R.layout.fragment_quiz) {
                 Log.i("Quiz Fragment", "Returning to main screen")
                 val intMain = Intent(activity, MainActivity::class.java)
                 startActivity(intMain)
+                return@setOnClickListener
             }
             isAnswer = !isAnswer
             //handle if we're ready to finish
 
             if (isAnswer) {
                 next.text = "Next"
-                if (questionNumber == topic?.getNumQuestions()) {
+                if (questionNumber == topic?.getNumQuestions()!! - 1) {
                     Log.i("Quiz Fragment", "Returning to main screen")
                     next.text = "Finish"
                 }
@@ -94,7 +95,6 @@ class QuizFragment : Fragment(R.layout.fragment_quiz) {
     private fun updateView(view: View) {
         //val questions = data?.getSerializable("questions") as HashMap<Int, Array<String>>
         val questions = repo.getTopic(quizApp.selectedTopic)?.questions
-        Log.i("QuizFragment", "Question: $questionNumber, ${questions?.get(questionNumber)}")
         if (isAnswer) {
 
             val radioButton = view.findViewById<RadioButton>(answerId)
@@ -106,13 +106,13 @@ class QuizFragment : Fragment(R.layout.fragment_quiz) {
                 val radio: RadioButton? = radioGroup.getChildAt(i) as? RadioButton
                 radio?.isEnabled = false
             }
-            if (questionNumber == questions.size) {
+            if (questionNumber == questions.size-1) {
                 view.findViewById<Button>(R.id.next).text = "Finish"
             } else {
                 view.findViewById<Button>(R.id.next).text = "Next"
             }
         } else {
-            view.findViewById<TextView>(R.id.questionNumber).setText("Question $questionNumber")
+            view.findViewById<TextView>(R.id.questionNumber).setText("Question ${questionNumber+1}")
             //val questions = data?.getSerializable("questions") as HashMap<Int, Array<String>>
             val questions = repo.getTopic(quizApp.selectedTopic)?.questions
             view.findViewById<TextView>(R.id.question).text = questions?.get(questionNumber)?.text
@@ -128,7 +128,7 @@ class QuizFragment : Fragment(R.layout.fragment_quiz) {
             }
             view.findViewById<Button>(R.id.next).text = "Submit"
         }
-        if (questionNumber >= 1) {
+        if (questionNumber >= 0) {
             if (questions != null) {
                 view.findViewById<TextView>(R.id.correct).text =
                     "You've answered $correct of out ${questions.size} correctly"
