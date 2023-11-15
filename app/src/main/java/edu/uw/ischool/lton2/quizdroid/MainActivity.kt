@@ -184,6 +184,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         val mainActivity = this
+        Log.i(TAG, "${this.filesDir}")
+
         val executor: Executor = Executors.newSingleThreadExecutor()
         val quizApp = (application as QuizApp)
         executor.execute {
