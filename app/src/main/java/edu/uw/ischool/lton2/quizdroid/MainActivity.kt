@@ -5,17 +5,24 @@ import android.content.Context
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.JsonReader
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.ListView
 import android.widget.TextView
+import android.widget.Toolbar
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.FileNotFoundException
+import java.io.FileReader
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
@@ -38,12 +45,12 @@ class TopicRepository(val context: Context): ITopicRepository {
     var jsonObj: JSONArray
     var topics: MutableList<Topic>
 
+
     init {
         // Creating Math topic object
         topics = mutableListOf()
         jsonObj = JSONArray()
         // Superheroes topic object
-
         // Physics topic object
     }
 
@@ -90,7 +97,7 @@ class TopicRepository(val context: Context): ITopicRepository {
         }
 
 
-        var questionsList:MutableList<Quiz> = mutableListOf()
+//        var questionsList:MutableList<Quiz> = mutableListOf()
 //        var topic: Topic
 
 
@@ -166,6 +173,7 @@ class QuizApp: Application() {
     lateinit var quizRepository : ITopicRepository
     val TAG = "QuizApp"
     lateinit var selectedTopic: Topic
+    lateinit var settings: Pair<String, Int>
     override fun onCreate() {
         super.onCreate()
         Log.i(TAG, "Quiz App Created")
@@ -175,60 +183,94 @@ class QuizApp: Application() {
     fun getRepo():TopicRepository {
         return quizRepository as TopicRepository
     }
+
+    fun setSetttings(settings:Pair<String, Int>) {
+        this.settings = settings
+    }
 }
 class MainActivity : AppCompatActivity() {
 
     val TAG = "MainActivity"
     lateinit var topics: List<Topic>
     override fun onCreate(savedInstanceState: Bundle?) {
+        val defaultSettings = Pair<String, Int>("${filesDir}/questions.json", 1)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         val mainActivity = this
-        Log.i(TAG, "${this.filesDir}")
+        Log.i(TAG, "${defaultSettings.first}")
 
-        val executor: Executor = Executors.newSingleThreadExecutor()
+//        val executor: Executor = Executors.newSingleThreadExecutor()
+        val mainHandler = Handler(Looper.getMainLooper())
         val quizApp = (application as QuizApp)
-        executor.execute {
-            val url = URL("http", "tednewardsandbox.site44.com", 80, "/questions.json")
-            val urlConnection = url.openConnection() as HttpURLConnection
-            val inputStream = urlConnection.inputStream
-            val reader = InputStreamReader(inputStream)
-            reader.use {
-                val jsonObj = JSONArray(it.readText())
-                Log.i(TAG, "Retrieved file and converted to JSON $jsonObj")
-                quizApp.getRepo().addTopics(jsonObj)
+        quizApp.settings = defaultSettings
 
-                mainActivity.runOnUiThread {
-                    val repo = quizApp.getRepo()
-                    topics = repo.getAll()
-                    Log.i("QuizDroid", "Topics: ${topics}")
-                    val quizCategories: (List<Topic>) -> List<Pair<String, String>> =
-                        { topics -> topics.map { Pair(it.title, it.shortDesc) } }
+        var jsonObj:JSONArray
+        val getFileRunnable = object : Runnable {
+            override fun run() {
 
-                    val listView = findViewById<ListView>(R.id.quizList)
-                    val arrayAdapter = TopicAdapter(this, quizCategories(topics))
-                    listView.adapter = arrayAdapter
-
-                    listView.setOnItemClickListener { parent, view, position, id ->
-                        val clicked = parent.getItemAtPosition(position) as Pair<String, String>
-                        Log.i("QuizDroid", "clicked item ${clicked}")
-                        (application as QuizApp).selectedTopic = topics[position]
-                        var intent = Intent()
-                        when (clicked.first) {
-                            "Math" -> intent = Intent(this, MathActivity::class.java)
-                            "Physics" -> intent = Intent(this, PhysicsActivity::class.java)
-                            "Marvel Superheroes" -> intent =
-                                Intent(this, SuperheroesActivity::class.java)
-                        }
-                        startActivity(intent)
+                try {
+                    FileReader(quizApp.settings.first).use {
+                        jsonObj = JSONArray(it.readText())
+                        Log.i(TAG, "Retrieved file and converted to JSON $jsonObj")
+                        quizApp.getRepo().addTopics(jsonObj)
                     }
-                    // Iterate over the items in the list, creating the question objects and putting them in a topic object
+                    mainHandler.postDelayed(this, quizApp.settings.second * 60000L)
+                } catch (e: FileNotFoundException) {
+                    Log.e(TAG,"File: ${quizApp.settings.first} not found")
                 }
-
-
             }
         }
+        mainHandler.post(getFileRunnable)
+        getFileRunnable.run()
+//        executor.exec {
+//            val url = URL("http", "tednewardsandbox.site44.com", 80, "/questions.json")
+//            val urlConnection = url.openConnection() as HttpURLConnection
+//            val inputStream = urlConnection.inputStream
+//            val reader = InputStreamReader(inputStream)
+
+
+//
+//        }
+
+
+        val repo = quizApp.getRepo()
+        topics = repo.getAll()
+        Log.i("QuizDroid", "Topics: ${topics}")
+        val quizCategories: (List<Topic>) -> List<Pair<String, String>> =
+            { topics -> topics.map { Pair(it.title, it.shortDesc) } }
+
+        val listView = findViewById<ListView>(R.id.quizList)
+        val arrayAdapter = TopicAdapter(this, quizCategories(topics))
+        listView.adapter = arrayAdapter
+
+        listView.setOnItemClickListener { parent, view, position, id ->
+            val clicked = parent.getItemAtPosition(position) as Pair<String, String>
+            Log.i("QuizDroid", "clicked item ${clicked}")
+            (application as QuizApp).selectedTopic = topics[position]
+            var intent = Intent(this, MathActivity::class.java)
+//            when (clicked.first) {
+//                "Science!" -> intent = Intent(this, MathActivity::class.java)
+//                "Marvel Super Heroes" -> intent = Intent(this, PhysicsActivity::class.java)
+//                "Mathematics" -> intent =
+//                    Intent(this, SuperheroesActivity::class.java)
+//            }
+            startActivity(intent)
+        }
     }
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        Log.i(TAG, "onCreateOptionsMenu called")
+        menuInflater.inflate(R.menu.toolbar_menu, menu)
+        return super.onCreateOptionsMenu(menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        Log.i(TAG, "${item.title} item selected")
+        val prefIntent = Intent(this, Preferences::class.java)
+        startActivity(prefIntent)
+        return super.onOptionsItemSelected(item)
+    }
+
 }
 
 

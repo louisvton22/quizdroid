@@ -31,7 +31,7 @@ class TitleFragment : Fragment(R.layout.fragment_title) {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val topic: Topic? = quizApp.getRepo().getTopic(quizApp.selectedTopic)
-        view.findViewById<TextView>(R.id.txtDescription).setText(topic?.longDesc)
+        view.findViewById<TextView>(R.id.txtDescription).setText(topic?.title)
         view.findViewById<TextView>(R.id.txtNumQuestions).setText("Number of questions: ${topic?.getNumQuestions()}")
         var quizFragment = QuizFragment()
         view.findViewById<Button>(R.id.btnBegin).setOnClickListener {

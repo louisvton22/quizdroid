@@ -3,6 +3,8 @@ package edu.uw.ischool.lton2.quizdroid
 import android.icu.text.CaseMap.Title
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.widget.TextView
+import org.w3c.dom.Text
 
 class MathActivity : AppCompatActivity() {
 
@@ -21,7 +23,7 @@ class MathActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_math)
-
+        findViewById<TextView>(R.id.quizTitle).text = "Welcome to the quiz!"
         val titleFragment = TitleFragment()
 //        bundle.putString("description", desc)
 //        bundle.putInt("numQuestions", nq)

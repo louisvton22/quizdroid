@@ -63,6 +63,7 @@ class QuizFragment : Fragment(R.layout.fragment_quiz) {
             if (next.text == "Finish") {
                 Log.i("Quiz Fragment", "Returning to main screen")
                 val intMain = Intent(activity, MainActivity::class.java)
+                intMain.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
                 startActivity(intMain)
                 return@setOnClickListener
             }
