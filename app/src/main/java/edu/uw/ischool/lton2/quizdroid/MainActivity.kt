@@ -18,16 +18,24 @@ import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.ListView
 import android.widget.TextView
+import android.widget.Toast
 import android.widget.Toolbar
+import kotlinx.coroutines.Dispatchers
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
 import java.io.FileNotFoundException
+import java.io.FileOutputStream
 import java.io.FileReader
+import java.io.FileWriter
 import java.io.InputStreamReader
+import java.io.PrintWriter
 import java.net.HttpURLConnection
+import java.net.MalformedURLException
 import java.net.URL
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.collections.forEach
 
 interface ITopicRepository {
@@ -59,7 +67,6 @@ class TopicRepository(val context: Context): ITopicRepository {
     }
 
     override fun getAll(): List<Topic> {
-
         return topics
     }
 
@@ -78,6 +85,7 @@ class TopicRepository(val context: Context): ITopicRepository {
 
     fun addTopics(jsonObj: JSONArray) {
         // Grab JSON file from internet
+        topics.removeAll(topics)
             for (i in 0 until jsonObj.length()) {
                 val topicObj = jsonObj.getJSONObject(i)
                 var questionsList:MutableList<Quiz> = mutableListOf()
@@ -95,68 +103,6 @@ class TopicRepository(val context: Context): ITopicRepository {
             }
 
         }
-
-
-//        var questionsList:MutableList<Quiz> = mutableListOf()
-//        var topic: Topic
-
-
-//        //Math
-//        questionsList = mutableListOf()
-//        for (question in arrayOf(
-//            arrayOf("What's 2+2", "4", "1", "3", "2", "1"),
-//            arrayOf("what is the area under a function called", "derivative", "integral", "area", "perimeter", "2"),
-//            arrayOf("What is the type of equilibrium that moves", "static", "moving", "dynamic", "chaotic", "3"),
-//            arrayOf("Who created calculus", "Euler", "Bernoulli", "Pythagorous", "Newton", "4"),
-//            arrayOf("What property describes x(y + z) = xy + xz", "Commutative", "Associative", "Transitive", "Distributive", "4"))) {
-//            val newQuestion = Quiz(question[0], question.slice(1 until question.size - 1).toList() as MutableList , question.last().toInt())
-//            questionsList.add(newQuestion)
-//        }
-//
-//        topic = Topic("Math", "Test your skills across various math concepts", "This math quiz contains mathematic" +
-//                "concepts up to a college-level including some historical facts behind famous mathematicians.", questionsList)
-//        Log.i(TAG, "${topic.getNumQuestions()}")
-//        topics.add(topic)
-//
-//        // Physics
-//
-//        questionsList = mutableListOf()
-//        for (question in arrayOf(
-//            arrayOf("What's the difference between speed and velocity?", "they mean the same thing", "speed's a vector and velocity's a scalar", "speed's a scalar and velocity's a vector", "velocity can only be positive", "3"),
-//            arrayOf("Which of the following is NOT one of Newton's law of motion?", "moving equates to doing work", "force is equal to mass times acceleration", "an object in motion stays in motion", "every action has an opposite or equal reaction", "1"),
-//            arrayOf("What phenomenon describes how screwdrivers are better than hand screwing", "angular momentum", "leverage", "grip", "chaotic", "2"),
-//            arrayOf("What is a tool that refracts light into visible wavelengths", "square", "lens", "light splitter", "prism", "4"),
-//            arrayOf("Which of the following describes work", "Thinking about your homework","Isometric exercises","Standing in place with a box","Carrying a box across the street", "4"),
-//            arrayOf("What phenomenon prevents everything from sliding all around the place", "Gravity", "Friction", "Glue", "Weight", "2"))) {
-//            val newQuestion = Quiz(
-//                question[0],
-//                question.slice(1 until question.size - 1).toList() as MutableList,
-//                question.last().toInt()
-//            )
-//            questionsList.add(newQuestion)
-//        }
-//        topic = Topic("Physics", "Learn more about real-life phenomenon", "This math quiz contains physics concepts related to motion," +
-//                " kinematics, magnetism, and gas laws.", questionsList)
-//        Log.i(TAG, "${topic.getNumQuestions()}")
-//        topics.add(topic)
-//
-//        // Superheroes
-//        questionsList = mutableListOf()
-//        for (question in arrayOf(
-//            arrayOf("How did spider-man get his powers?", "He was born with them", "He drank a spider-mutant potion", "radioactive spider bite","exposed to gamma radiation", "3"),
-//            arrayOf("Which actor plays Thor in all Marvel Studio Movies?", "Chris Hemsworth", "Luke Hemsworth", "Chris Evans", "Robert Downy Jr.", "1"),
-//            arrayOf("What is Iron Man's AI system called?", "Karen", "Jarvis", "Vision", "Candace", "2"),
-//            arrayOf("Which team was the Black Panther a part of in Civil War?", "Team Captain America", "Team Hulk", "Independent", "Team Iron-Man", "4"),
-//            arrayOf("Who held the time stone for most of the MCU movies?", "Thanos","Dr. Strange","Gamora","Vision", "2"),
-//            arrayOf("What is Wolverine's real name?", "Thomas", "Xavier", "Logan", "Hank", "3"),
-//            arrayOf("What is Daredevil's occupation aside from crime fighting?", "Lawyer", "Doctor", "Policeman", "Corporate CEO", "1"))) {
-//            val newQuestion = Quiz(question[0], question.slice(1 until question.size - 1).toList() as MutableList , question.last().toInt())
-//            questionsList.add(newQuestion)
-//        }
-//        topic = Topic("Marvel Superheroes", "How big of a marvel fan are you?", "This superheroes quiz is about all the Marvel Superhero" +
-//                " comic books,and movies that are and not produced by Marvel Studios", questionsList)
-//        Log.i(TAG, "${topic.getNumQuestions()}")
-//        topics.add(topic)
 
 }
 
@@ -193,7 +139,7 @@ class MainActivity : AppCompatActivity() {
     val TAG = "MainActivity"
     lateinit var topics: List<Topic>
     override fun onCreate(savedInstanceState: Bundle?) {
-        val defaultSettings = Pair<String, Int>("${filesDir}/questions.json", 1)
+        val defaultSettings = Pair<String, Int>("http://tednewardsandbox.site44.com/questions.json", 1)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         val mainActivity = this
@@ -204,58 +150,56 @@ class MainActivity : AppCompatActivity() {
         val quizApp = (application as QuizApp)
         quizApp.settings = defaultSettings
 
-        var jsonObj:JSONArray
+//        var jsonObj:JSONArray
         val getFileRunnable = object : Runnable {
             override fun run() {
-
                 try {
-                    FileReader(quizApp.settings.first).use {
-                        jsonObj = JSONArray(it.readText())
-                        Log.i(TAG, "Retrieved file and converted to JSON $jsonObj")
-                        quizApp.getRepo().addTopics(jsonObj)
+                    Log.i("Side Thread", "fetching url")
+                    Log.i("Side Thread", "Retrieving file at ${filesDir}/questions.json")
+                    val outputFile = File(filesDir.toString() + "/questions.json").createNewFile()
+                    Log.i("Side Thread", "$outputFile")
+
+                    val url = URL("http", "tednewardsandbox.site44.com", 80, "/questions.json")
+                    val urlConnection = url.openConnection() as HttpURLConnection
+                    val inputStream = urlConnection.inputStream
+                    val reader = InputStreamReader(inputStream)
+                    // validates whether the input can be parsed into json or not
+
+                    // check if output file already exists.
+
+                    // Writes data retrieved from url to local file
+                    reader.use {
+                        val input = it.readText()
+                        PrintWriter(FileOutputStream(filesDir.toString()+"/questions.json", false))
+                            .use {
+                                it.print(input)
+                                it.close()
+                            }
+                        it.close()
                     }
-                    mainHandler.postDelayed(this, quizApp.settings.second * 60000L)
-                } catch (e: FileNotFoundException) {
-                    Log.e(TAG,"File: ${quizApp.settings.first} not found")
+                    inputStream.close()
+                    urlConnection.disconnect()
+                    // read questions.json local file and update repo
+                    FileReader(filesDir.toString() + "/questions.json")
+                        .use {
+                            val jsonObj = JSONArray(it.readText())
+                            Log.i(TAG, "Retrieved file and converted to JSON $jsonObj")
+                            quizApp.getRepo().addTopics(jsonObj)
+                        }
+
+                    // add delay for next update
+                    mainHandler.post {
+                        Toast.makeText(mainActivity, "Downloading data from url: ${quizApp.settings.first}", Toast.LENGTH_LONG).show()
+                        loadUI()
+                    }
+                } catch (e: MalformedURLException) {
+                    Log.e(TAG,"URL ${quizApp.settings.first} malformed")
                 }
+
             }
         }
-        mainHandler.post(getFileRunnable)
-        getFileRunnable.run()
-//        executor.exec {
-//            val url = URL("http", "tednewardsandbox.site44.com", 80, "/questions.json")
-//            val urlConnection = url.openConnection() as HttpURLConnection
-//            val inputStream = urlConnection.inputStream
-//            val reader = InputStreamReader(inputStream)
-
-
-//
-//        }
-
-
-        val repo = quizApp.getRepo()
-        topics = repo.getAll()
-        Log.i("QuizDroid", "Topics: ${topics}")
-        val quizCategories: (List<Topic>) -> List<Pair<String, String>> =
-            { topics -> topics.map { Pair(it.title, it.shortDesc) } }
-
-        val listView = findViewById<ListView>(R.id.quizList)
-        val arrayAdapter = TopicAdapter(this, quizCategories(topics))
-        listView.adapter = arrayAdapter
-
-        listView.setOnItemClickListener { parent, view, position, id ->
-            val clicked = parent.getItemAtPosition(position) as Pair<String, String>
-            Log.i("QuizDroid", "clicked item ${clicked}")
-            (application as QuizApp).selectedTopic = topics[position]
-            var intent = Intent(this, MathActivity::class.java)
-//            when (clicked.first) {
-//                "Science!" -> intent = Intent(this, MathActivity::class.java)
-//                "Marvel Super Heroes" -> intent = Intent(this, PhysicsActivity::class.java)
-//                "Mathematics" -> intent =
-//                    Intent(this, SuperheroesActivity::class.java)
-//            }
-            startActivity(intent)
-        }
+        val executor = Executors.newSingleThreadScheduledExecutor()
+        executor.scheduleAtFixedRate(getFileRunnable, 0L, quizApp.settings.second * 1L, TimeUnit.MINUTES)
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -271,6 +215,25 @@ class MainActivity : AppCompatActivity() {
         return super.onOptionsItemSelected(item)
     }
 
+    fun loadUI() {
+        val quizApp = (application as QuizApp)
+        val repo = quizApp.getRepo()
+        topics = repo.getAll()
+        Log.i("QuizDroid", "Topics: ${topics}")
+        val quizCategories: (List<Topic>) -> List<Pair<String, String>> =
+            { topics -> topics.map { Pair(it.title, it.shortDesc) } }
+        val listView = findViewById<ListView>(R.id.quizList)
+        listView.adapter = null
+        val arrayAdapter = TopicAdapter(this, quizCategories(topics))
+        listView.adapter = arrayAdapter
+        listView.setOnItemClickListener { parent, view, position, id ->
+            val clicked = parent.getItemAtPosition(position) as Pair<String, String>
+            Log.i("QuizDroid", "clicked item ${clicked}")
+            (application as QuizApp).selectedTopic = topics[position]
+            var intent = Intent(this, MathActivity::class.java)
+            startActivity(intent)
+        }
+    }
 }
 
 
