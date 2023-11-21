@@ -1,12 +1,15 @@
 package edu.uw.ischool.lton2.quizdroid
 
+import android.app.AlertDialog
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.util.JsonReader
 import android.util.Log
 import android.view.LayoutInflater
@@ -28,6 +31,7 @@ import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.io.FileReader
 import java.io.FileWriter
+import java.io.IOException
 import java.io.InputStreamReader
 import java.io.PrintWriter
 import java.net.HttpURLConnection
@@ -138,67 +142,81 @@ class MainActivity : AppCompatActivity() {
 
     val TAG = "MainActivity"
     lateinit var topics: List<Topic>
+    val mainActivity = this
+    val mainHandler = Handler(Looper.getMainLooper())
+    lateinit var quizApp: QuizApp
+    val executor = Executors.newSingleThreadScheduledExecutor()
+    val defaultSettings = Pair<String, Int>("tednewardsandbox.site44.com/questions.json", 1)
+//    val defaultSettings = Pair<String, Int>("google.com/404", 1)
+    val getFileRunnable = object : Runnable {
+        override fun run() {
+            try {
+                Log.i("Side Thread", "fetching url")
+                Log.i("Side Thread", "Retrieving file at ${filesDir}/questions.json")
+                val outputFile = File(filesDir.toString() + "/questions.json").createNewFile()
+                Log.i("Side Thread", "$outputFile")
+                val split: (String) -> Pair<String, String>  = {
+                    val file = it.slice(it.lastIndexOf("/")..<it.length)
+                    val path = it.slice(0..<it.lastIndexOf("/"))
+                    Pair(path, file)
+                }
+                Log.i("Side Thread", "${split(defaultSettings.first).toString()}")
+                val resources = split(quizApp.settings.first)
+                val url = URL("http",resources.first, 80, resources.second)
+                // Throw IOException if url does not get an OK response
+                val urlConnection = url.openConnection() as HttpURLConnection
+                Log.i("Side thread", "bad url")
+                // throw if download fails
+                val inputStream = urlConnection.inputStream
+                val reader = InputStreamReader(inputStream)
+                // validates whether the input can be parsed into json or not
+                // check if output file already exists.
+
+                // Writes data retrieved from url to local file
+                reader.use {
+                    val input = it.readText()
+                    PrintWriter(FileOutputStream(filesDir.toString()+"/questions.json", false))
+                        .use {
+                            it.print(input)
+                            it.close()
+                        }
+                    it.close()
+                }
+                inputStream.close()
+                urlConnection.disconnect()
+                // read questions.json local file and update repo
+                FileReader(filesDir.toString() + "/questions.json")
+                    .use {
+                        val jsonObj = JSONArray(it.readText())
+                        Log.i(TAG, "Retrieved file and converted to JSON $jsonObj")
+                        quizApp.getRepo().addTopics(jsonObj)
+                    }
+
+                // add delay for next update
+                mainHandler.post {
+                    Toast.makeText(mainActivity, "Downloading data from url: ${quizApp.settings.first}", Toast.LENGTH_LONG).show()
+                    loadUI()
+                }
+            } catch (e: Exception) {
+               handleIOException()
+            }
+
+        }
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
-        val defaultSettings = Pair<String, Int>("http://tednewardsandbox.site44.com/questions.json", 1)
+
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        val mainActivity = this
         Log.i(TAG, "${defaultSettings.first}")
 
 //        val executor: Executor = Executors.newSingleThreadExecutor()
-        val mainHandler = Handler(Looper.getMainLooper())
-        val quizApp = (application as QuizApp)
+
+        quizApp = (application as QuizApp)
         quizApp.settings = defaultSettings
 
 //        var jsonObj:JSONArray
-        val getFileRunnable = object : Runnable {
-            override fun run() {
-                try {
-                    Log.i("Side Thread", "fetching url")
-                    Log.i("Side Thread", "Retrieving file at ${filesDir}/questions.json")
-                    val outputFile = File(filesDir.toString() + "/questions.json").createNewFile()
-                    Log.i("Side Thread", "$outputFile")
 
-                    val url = URL("http", "tednewardsandbox.site44.com", 80, "/questions.json")
-                    val urlConnection = url.openConnection() as HttpURLConnection
-                    val inputStream = urlConnection.inputStream
-                    val reader = InputStreamReader(inputStream)
-                    // validates whether the input can be parsed into json or not
 
-                    // check if output file already exists.
-
-                    // Writes data retrieved from url to local file
-                    reader.use {
-                        val input = it.readText()
-                        PrintWriter(FileOutputStream(filesDir.toString()+"/questions.json", false))
-                            .use {
-                                it.print(input)
-                                it.close()
-                            }
-                        it.close()
-                    }
-                    inputStream.close()
-                    urlConnection.disconnect()
-                    // read questions.json local file and update repo
-                    FileReader(filesDir.toString() + "/questions.json")
-                        .use {
-                            val jsonObj = JSONArray(it.readText())
-                            Log.i(TAG, "Retrieved file and converted to JSON $jsonObj")
-                            quizApp.getRepo().addTopics(jsonObj)
-                        }
-
-                    // add delay for next update
-                    mainHandler.post {
-                        Toast.makeText(mainActivity, "Downloading data from url: ${quizApp.settings.first}", Toast.LENGTH_LONG).show()
-                        loadUI()
-                    }
-                } catch (e: MalformedURLException) {
-                    Log.e(TAG,"URL ${quizApp.settings.first} malformed")
-                }
-
-            }
-        }
-        val executor = Executors.newSingleThreadScheduledExecutor()
         executor.scheduleAtFixedRate(getFileRunnable, 0L, quizApp.settings.second * 1L, TimeUnit.MINUTES)
     }
 
@@ -232,6 +250,62 @@ class MainActivity : AppCompatActivity() {
             (application as QuizApp).selectedTopic = topics[position]
             var intent = Intent(this, MathActivity::class.java)
             startActivity(intent)
+        }
+    }
+
+    fun isAirplaneModeOn(context: Context): Boolean {
+        return Settings.System.getInt(context.contentResolver, Settings.Global.AIRPLANE_MODE_ON, 0) != 0
+    }
+
+    // handle when there's no service or airplane mode is on
+    // TODO: Need to handle case where network is good but url is bad
+    fun handleIOException() {
+        val builder = AlertDialog.Builder(mainActivity)
+        builder.setTitle("No Internet Connection")
+        val connectivityManager = mainActivity.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        if (connectivityManager.activeNetwork == null) {
+            builder.setMessage("No signal available")
+            builder.setNegativeButton("Close") {dialog, which ->
+                dialog.dismiss()
+            }
+        }
+        else if (isAirplaneModeOn(mainActivity)) {
+            Log.i(TAG, "Airplane is on. Alerting")
+            builder.setMessage("Airplane mode is currently on. Turn off in settings")
+            builder.setNegativeButton("Close") {dialog, which ->
+                dialog.dismiss()
+            }
+            builder.setPositiveButton("Open") {dialog, which ->
+                val intent = Intent(Intent.ACTION_MAIN)
+                intent.setClassName("com.android.phone", "com.android.phone.NetworkSetting")
+                startActivity(intent)
+                dialog.dismiss()
+            }
+
+
+        } else {
+            builder.setTitle("Download Failed")
+            builder.setMessage("Download from invalid URL. Please try again or quit the application")
+            builder.setPositiveButton("Retry") {dialog, which ->
+                executor.execute(getFileRunnable)
+                dialog.dismiss()
+            }
+            builder.setNegativeButton("Quit") {dialog, which ->
+                dialog.dismiss()
+                mainActivity.finish()
+            }
+        }
+        mainHandler.post {
+            builder.show()
+        }
+    }
+
+    //handle when the download fails
+    fun handleMalformedURLException() {
+        val builder = AlertDialog.Builder(mainActivity)
+
+        mainHandler.post {
+            builder.show()
         }
     }
 }
